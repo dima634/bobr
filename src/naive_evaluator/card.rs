@@ -28,9 +28,12 @@ pub enum Rank {
 }
 
 impl Rank {
-    pub fn lower(&self) -> Self {
-        debug_assert!(self != &Rank::Two);
-        unsafe { return std::mem::transmute(*self as u8 - 1) };
+    pub fn lower(&self) -> Option<Self> {
+        if self != &Rank::Two {
+            unsafe { return Some(std::mem::transmute(*self as u8 - 1)); }
+        } else {
+            return None;
+        }
     }
 }
 
