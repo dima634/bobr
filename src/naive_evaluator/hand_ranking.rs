@@ -1,15 +1,15 @@
-use super::card::{Suit, Rank, Card};
+use super::card::Rank;
 
-#[derive(PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 pub enum HandRanking {
-    RoyalFlush(Suit),
-    StraightFlush(Rank),
-    FourOf(Rank),
-    FullHouse(Rank),
-    Flush(Rank),
-    Straight(Rank),
-    ThreeOf(Rank),
-    TwoPair(Rank),
+    HighCard(Rank),
     Pair(Rank),
-    HighCard(Rank)
+    TwoPair(Rank),
+    ThreeOf(Rank),
+    Straight(Rank),
+    Flush(Rank),
+    FullHouse(Rank),
+    FourOf(Rank),
+    StraightFlush(Rank),
+    RoyalFlush
 }

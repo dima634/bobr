@@ -5,6 +5,8 @@ pub fn evaluate_five_cards<const HAND_SIZE: usize>(hand: &Hand<HAND_SIZE>) -> Ha
     .or(has_straight_flush(hand)) 
     .or(has_four_of(hand))
     .or(has_full_house(hand))
+    .or(has_flush(hand))
+    .or(has_straight(hand))
     .unwrap_or(HandRanking::Pair(Rank::Ace));
 }
 
@@ -23,7 +25,7 @@ fn has_royal_flush<const HAND_SIZE: usize>(hand: &Hand<HAND_SIZE>) -> Option<Han
         }
     }
 
-    return Some(HandRanking::RoyalFlush(ace_suit));
+    return Some(HandRanking::RoyalFlush);
 }
 
 fn has_straight_flush<const HAND_SIZE: usize>(hand: &Hand<HAND_SIZE>) -> Option<HandRanking> {
@@ -83,7 +85,10 @@ fn has_full_house<const HAND_SIZE: usize>(hand: &Hand<HAND_SIZE>) -> Option<Hand
 }
 
 fn has_flush<const HAND_SIZE: usize>(hand: &Hand<HAND_SIZE>) -> Option<HandRanking> {
-    return has_flush_of(Suit::Clubs, hand)
+    return has_flush_of(Suit::Diamonds, hand)
+        .or(has_flush_of(Suit::Clubs, hand))
+        .or(has_flush_of(Suit::Hearts, hand)) 
+        .or(has_flush_of(Suit::Spades, hand));
 }
 
 fn has_flush_of<const HAND_SIZE: usize>(suit: Suit, hand: &Hand<HAND_SIZE>) -> Option<HandRanking> {
@@ -109,6 +114,30 @@ fn has_flush_of<const HAND_SIZE: usize>(suit: Suit, hand: &Hand<HAND_SIZE>) -> O
     return None;
 }
 
+fn has_straight<const HAND_SIZE: usize>(hand: &Hand<HAND_SIZE>) -> Option<HandRanking> {
+    let mut high_card_rank = hand.cards().last().unwrap().rank();
+    let mut previous_rank = high_card_rank;
+    let mut count = 1;
+
+    for card in hand.cards().iter().rev().skip(1) {
+        if card.rank() != previous_rank.lower() {
+            high_card_rank = card.rank();
+            previous_rank = card.rank();
+            count = 1;
+            continue;
+        }
+
+        count += 1;
+        previous_rank = card.rank();
+    }
+
+    if count >= 5 {
+        return Some(HandRanking::Straight(high_card_rank));
+    }
+
+    return None;
+}
+
 #[cfg(test)]
 mod tests {
     use crate::naive_evaluator::{
@@ -131,7 +160,7 @@ mod tests {
             Card::new(Rank::Two, Suit::Spades)
         ]);
         let ranking = evaluate_five_cards(&hand);
-        assert!(ranking == HandRanking::RoyalFlush(Suit::Clubs));
+        assert_eq!(ranking, HandRanking::RoyalFlush);
     }
 
     #[test]
@@ -146,7 +175,7 @@ mod tests {
             Card::new(Rank::King, Suit::Spades)
         ]);
         let ranking = evaluate_five_cards(&hand);
-        assert!(ranking == HandRanking::StraightFlush(Rank::Ten));
+        assert_eq!(ranking, HandRanking::StraightFlush(Rank::Ten));
     }
 
     #[test]
@@ -161,6 +190,36 @@ mod tests {
             Card::new(Rank::King, Suit::Spades)
         ]);
         let ranking = evaluate_five_cards(&hand);
-        assert!(ranking == HandRanking::FourOf(Rank::Nine));
+        assert_eq!(ranking, HandRanking::FourOf(Rank::Nine));
+    }
+
+    #[test]
+    fn test_flush() {
+        let hand = Hand::new([
+            Card::new(Rank::Nine, Suit::Diamonds),
+            Card::new(Rank::Ten, Suit::Clubs),
+            Card::new(Rank::King, Suit::Clubs),
+            Card::new(Rank::Two, Suit::Clubs),
+            Card::new(Rank::Nine, Suit::Clubs),
+            Card::new(Rank::Eight, Suit::Clubs),
+            Card::new(Rank::King, Suit::Spades)
+        ]);
+        let ranking = evaluate_five_cards(&hand);
+        assert_eq!(ranking, HandRanking::Flush(Rank::King));
+    }
+
+    #[test]
+    fn test_straight() {
+        let hand = Hand::new([
+            Card::new(Rank::Two, Suit::Diamonds),
+            Card::new(Rank::Three, Suit::Clubs),
+            Card::new(Rank::Four, Suit::Spades),
+            Card::new(Rank::Five, Suit::Diamonds),
+            Card::new(Rank::Six, Suit::Hearts),
+            Card::new(Rank::Ace, Suit::Clubs),
+            Card::new(Rank::King, Suit::Spades)
+        ]);
+        let ranking = evaluate_five_cards(&hand);
+        assert_eq!(ranking, HandRanking::Straight(Rank::Six));
     }
 }
