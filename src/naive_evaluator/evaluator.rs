@@ -1,10 +1,10 @@
 use super::{
-    hand::Hand, 
+    hand::{Hand, HAND_SIZE}, 
     hand_ranking::HandRanking, 
     card::{Rank, Suit}
 };
 
-pub fn evaluate_five_cards<const HAND_SIZE: usize>(hand: &Hand<HAND_SIZE>) -> HandRanking {
+pub fn evaluate_five_cards(hand: &Hand) -> HandRanking {
   return has_royal_flush(hand)
     .or(has_straight_flush(hand)) 
     .or(has_four_of(hand))
@@ -16,7 +16,7 @@ pub fn evaluate_five_cards<const HAND_SIZE: usize>(hand: &Hand<HAND_SIZE>) -> Ha
     .unwrap_or(highest_card(hand));
 }
 
-fn has_royal_flush<const HAND_SIZE: usize>(hand: &Hand<HAND_SIZE>) -> Option<HandRanking> {
+fn has_royal_flush(hand: &Hand) -> Option<HandRanking> {
     let last_card = &hand.cards()[HAND_SIZE - 1];
 
     if last_card.rank() != Rank::Ace {
@@ -34,7 +34,7 @@ fn has_royal_flush<const HAND_SIZE: usize>(hand: &Hand<HAND_SIZE>) -> Option<Han
     return Some(HandRanking::RoyalFlush);
 }
 
-fn has_straight_flush<const HAND_SIZE: usize>(hand: &Hand<HAND_SIZE>) -> Option<HandRanking> {
+fn has_straight_flush(hand: &Hand) -> Option<HandRanking> {
     let mut high_card = hand.cards().last().unwrap();
     let mut previous_card = high_card;
     let mut straight_cards_count = 1;
@@ -69,7 +69,7 @@ fn has_straight_flush<const HAND_SIZE: usize>(hand: &Hand<HAND_SIZE>) -> Option<
     return None;
 }
 
-fn has_four_of<const HAND_SIZE: usize>(hand: &Hand<HAND_SIZE>) -> Option<HandRanking> {
+fn has_four_of(hand: &Hand) -> Option<HandRanking> {
     return hand.cards()
         .windows(4)
         .find(|four| {
@@ -79,7 +79,7 @@ fn has_four_of<const HAND_SIZE: usize>(hand: &Hand<HAND_SIZE>) -> Option<HandRan
         .map(|four| HandRanking::FourOf(four[0].rank()));
 }
 
-fn has_full_house<const HAND_SIZE: usize>(hand: &Hand<HAND_SIZE>) -> Option<HandRanking> {
+fn has_full_house(hand: &Hand) -> Option<HandRanking> {
     let three_of = has_three_of(hand);
 
     return three_of.and_then(|three_of| {
@@ -99,14 +99,14 @@ fn has_full_house<const HAND_SIZE: usize>(hand: &Hand<HAND_SIZE>) -> Option<Hand
     });
 }
 
-fn has_flush<const HAND_SIZE: usize>(hand: &Hand<HAND_SIZE>) -> Option<HandRanking> {
+fn has_flush(hand: &Hand) -> Option<HandRanking> {
     return has_flush_of(Suit::Diamonds, hand)
         .or(has_flush_of(Suit::Clubs, hand))
         .or(has_flush_of(Suit::Hearts, hand)) 
         .or(has_flush_of(Suit::Spades, hand));
 }
 
-fn has_flush_of<const HAND_SIZE: usize>(suit: Suit, hand: &Hand<HAND_SIZE>) -> Option<HandRanking> {
+fn has_flush_of(suit: Suit, hand: &Hand) -> Option<HandRanking> {
     let mut high_rank = hand.cards().first().unwrap().rank();
     let mut count = 0;
 
@@ -129,7 +129,7 @@ fn has_flush_of<const HAND_SIZE: usize>(suit: Suit, hand: &Hand<HAND_SIZE>) -> O
     return None;
 }
 
-fn has_straight<const HAND_SIZE: usize>(hand: &Hand<HAND_SIZE>) -> Option<HandRanking> {
+fn has_straight(hand: &Hand) -> Option<HandRanking> {
     let mut high_card_rank = hand.cards().last().unwrap().rank();
     let mut previous_rank = high_card_rank;
     let mut count = 1;
@@ -160,14 +160,14 @@ fn has_straight<const HAND_SIZE: usize>(hand: &Hand<HAND_SIZE>) -> Option<HandRa
     return None;
 }
 
-fn has_three_of<const HAND_SIZE: usize>(hand: &Hand<HAND_SIZE>) -> Option<HandRanking> {
+fn has_three_of(hand: &Hand) -> Option<HandRanking> {
     return hand.cards()
         .windows(3)
         .find(|trey| trey[0].rank() == trey[1].rank() && trey[0].rank() == trey[2].rank())
         .map(|trey| HandRanking::ThreeOf(trey[0].rank()));
 }
 
-fn has_pairs<const HAND_SIZE: usize>(hand: &Hand<HAND_SIZE>) -> Option<HandRanking> {
+fn has_pairs(hand: &Hand) -> Option<HandRanking> {
     let pairs = find_all_pairs(hand);
 
     if pairs.is_empty() {
@@ -182,7 +182,7 @@ fn has_pairs<const HAND_SIZE: usize>(hand: &Hand<HAND_SIZE>) -> Option<HandRanki
 }
 
 /// Return all pairs in ascending order by rank
-fn find_all_pairs<const HAND_SIZE: usize>(hand: &Hand<HAND_SIZE>) -> Vec<Rank> {
+fn find_all_pairs(hand: &Hand) -> Vec<Rank> {
     return hand.cards()
         .windows(2)
         .filter(|pair| pair[0].rank() == pair[1].rank())
@@ -190,7 +190,7 @@ fn find_all_pairs<const HAND_SIZE: usize>(hand: &Hand<HAND_SIZE>) -> Vec<Rank> {
         .collect();
 }
 
-fn highest_card<const HAND_SIZE: usize>(hand: &Hand<HAND_SIZE>) -> HandRanking {
+fn highest_card(hand: &Hand) -> HandRanking {
     return HandRanking::HighCard(hand.cards().last().unwrap().rank());
 }
 
