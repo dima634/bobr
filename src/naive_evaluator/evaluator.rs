@@ -1,31 +1,33 @@
 use super::{
-    hand::{Hand, HAND_SIZE}, 
-    hand_ranking::HandRanking, 
+    hand::Hand,
+    hand_ranking::{HandRanking, FourOf, FullHouse, Flush, ThreeOf, TwoPair, Pair}, 
     card::{Rank, Suit}
 };
 
+pub const CARDS_IN_COMBO: usize = 5;
+
 pub fn evaluate_five_cards(hand: &Hand) -> HandRanking {
-  return has_royal_flush(hand)
-    .or(has_straight_flush(hand)) 
-    .or(has_four_of(hand))
-    .or(has_full_house(hand))
-    .or(has_flush(hand))
-    .or(has_straight(hand))
-    .or(has_three_of(hand))
-    .or(has_pairs(hand))
-    .unwrap_or(highest_card(hand));
+    return has_royal_flush(hand)
+        .or_else(|| has_straight_flush(hand)) 
+        .or_else(|| has_four_of(hand))
+        .or_else(|| has_full_house(hand))
+        .or_else(|| has_flush(hand))
+        .or_else(|| has_straight(hand))
+        .or_else(|| has_three_of(hand))
+        .or_else(|| has_pairs(hand))
+        .unwrap_or(highest_card(hand));
 }
 
 fn has_royal_flush(hand: &Hand) -> Option<HandRanking> {
-    let last_card = &hand.cards()[HAND_SIZE - 1];
+    let first_card = &hand.cards()[0];
 
-    if last_card.rank() != Rank::Ace {
+    if first_card.rank() != Rank::Ace {
         return None;
     }
 
-    let ace_suit = last_card.suit();
+    let ace_suit = first_card.suit();
 
-    for card in hand.cards().iter().rev().skip(1).take(4) {
+    for card in hand.cards().iter().skip(1).take(4) {
         if ace_suit != card.suit() {
             return None;
         }
@@ -35,11 +37,11 @@ fn has_royal_flush(hand: &Hand) -> Option<HandRanking> {
 }
 
 fn has_straight_flush(hand: &Hand) -> Option<HandRanking> {
-    let mut high_card = hand.cards().last().unwrap();
+    let mut high_card = hand.cards()[0];
     let mut previous_card = high_card;
     let mut straight_cards_count = 1;
 
-    for card in hand.cards().iter().rev().skip(1) {
+    for card in hand.cards().iter().skip(1) {
         let expected_rank = 
             if let Some(lower) = previous_card.rank().lower() {
                 lower
@@ -52,17 +54,17 @@ fn has_straight_flush(hand: &Hand) -> Option<HandRanking> {
             card.rank() == expected_rank;
 
         if !ok {
-            high_card = card;
-            previous_card = card;
+            high_card = *card;
+            previous_card = *card;
             straight_cards_count = 1;
             continue;
         }
 
-        previous_card = card;
+        previous_card = *card;
         straight_cards_count += 1;
     }
 
-    if straight_cards_count >= 5 {
+    if straight_cards_count >= CARDS_IN_COMBO {
         return Some(HandRanking::StraightFlush(high_card.rank()));
     }
 
@@ -72,27 +74,33 @@ fn has_straight_flush(hand: &Hand) -> Option<HandRanking> {
 fn has_four_of(hand: &Hand) -> Option<HandRanking> {
     return hand.cards()
         .windows(4)
-        .find(|four| {
+        .enumerate()
+        .find(|(_, four)| {
             let first = four[0];
             return four.iter().skip(1).all(|card| card.rank() == first.rank());
         })
-        .map(|four| HandRanking::FourOf(four[0].rank()));
+        .map(|(i, four)| HandRanking::FourOf(
+            FourOf::new(
+                four[0].rank(), 
+                hand.cards()[if i == 0 { 4 } else { 0 }].rank()
+            )
+        ));
 }
 
 fn has_full_house(hand: &Hand) -> Option<HandRanking> {
-    let three_of = has_three_of(hand);
+    let maybe_three_of = hand.cards()
+        .windows(3)
+        .find(|trey| trey[0].rank() == trey[1].rank() && trey[0].rank() == trey[2].rank());
 
-    return three_of.and_then(|three_of| {
-        let three_of_rank = match three_of {
-            HandRanking::ThreeOf(rank) => rank,
-            _ => unreachable!()
-        };
-        let has_pair = hand.cards()
+    return maybe_three_of.and_then(|three_of| {
+        let three_of_rank = three_of[0].rank();
+        let maybe_pair = hand.cards()
             .windows(2)
-            .any(|pair| pair[0].rank() == pair[1].rank() && pair[0].rank() != three_of_rank);
+            .find(|pair| pair[0].rank() == pair[1].rank() && pair[0].rank() != three_of_rank);
 
-        if has_pair {
-            return Some(HandRanking::FullHouse(three_of_rank));
+        if let Some(pair) = maybe_pair {
+            let full_house = FullHouse::new(pair[0].rank(), three_of_rank);
+            return Some(HandRanking::FullHouse(full_house));
         }
 
         return None;
@@ -101,70 +109,48 @@ fn has_full_house(hand: &Hand) -> Option<HandRanking> {
 
 fn has_flush(hand: &Hand) -> Option<HandRanking> {
     return has_flush_of(Suit::Diamonds, hand)
-        .or(has_flush_of(Suit::Clubs, hand))
-        .or(has_flush_of(Suit::Hearts, hand)) 
-        .or(has_flush_of(Suit::Spades, hand));
+        .or_else(|| has_flush_of(Suit::Clubs, hand))
+        .or_else(|| has_flush_of(Suit::Hearts, hand)) 
+        .or_else(|| has_flush_of(Suit::Spades, hand));
 }
 
 fn has_flush_of(suit: Suit, hand: &Hand) -> Option<HandRanking> {
-    let mut high_rank = hand.cards().first().unwrap().rank();
-    let mut count = 0;
+    let maybe_flush: Vec<_> = hand.cards().iter()
+        .filter(|card| card.suit() == suit)
+        .map(|card| card.rank())
+        .collect();
 
-    for card in hand.cards().iter().skip(1) {
-        if card.suit() != suit {
-            continue;
-        }
-
-        if high_rank < card.rank() {
-            high_rank = card.rank();
-        }
-
-        count += 1;
-    }
-
-    if count >= 4 {
-        return Some(HandRanking::Flush(high_rank));
+    if maybe_flush.len() >= CARDS_IN_COMBO {
+        return Some(HandRanking::Flush(
+            Flush::new(maybe_flush.try_into().unwrap())
+        ));
     }
     
     return None;
 }
 
 fn has_straight(hand: &Hand) -> Option<HandRanking> {
-    let mut high_card_rank = hand.cards().last().unwrap().rank();
-    let mut previous_rank = high_card_rank;
-    let mut count = 1;
-
-    for card in hand.cards().iter().rev().skip(1) {
-        let expected_rank = 
-            if let Some(lower) = previous_rank.lower() {
-                lower
-            } else {
-                return None;
-            };
-
-        if card.rank() != expected_rank {
-            high_card_rank = card.rank();
-            previous_rank = card.rank();
-            count = 1;
-            continue;
-        }
-
-        count += 1;
-        previous_rank = card.rank();
-    }
-
-    if count >= 5 {
-        return Some(HandRanking::Straight(high_card_rank));
-    }
-
-    return None;
+    return hand.cards()
+        .windows(CARDS_IN_COMBO)
+        .find(|five| five.windows(2).all(|pair| pair[0].rank().lower().is_some_and(|lower| lower == pair[1].rank())))
+        .map(|straight| HandRanking::Straight(straight[0].rank()))
 }
 
 fn has_three_of(hand: &Hand) -> Option<HandRanking> {
     return hand.cards()
         .windows(3)
         .find(|trey| trey[0].rank() == trey[1].rank() && trey[0].rank() == trey[2].rank())
-        .map(|trey| HandRanking::ThreeOf(trey[0].rank()));
+        .map(|trey| {
+            let three_of_rank = trey[0].rank();
+            let kickers = hand.cards().iter()
+                .filter(|card| card.rank() != three_of_rank)
+                .take(2)
+                .map(|card| card.rank())
+                .collect::<Vec<_>>()
+                .try_into()
+                .unwrap();
+            return HandRanking::ThreeOf(ThreeOf::new(trey[0].rank(), kickers));
+        });
 }
 
 fn has_pairs(hand: &Hand) -> Option<HandRanking> {
@@ -175,10 +161,25 @@ fn has_pairs(hand: &Hand) -> Option<HandRanking> {
     }
 
     if pairs.len() == 1 {
-        return Some(HandRanking::Pair(pairs[0]));
+        let kickers = hand.cards().iter()
+            .filter(|card| card.rank() != pairs[0])
+            .take(3)
+            .map(|card| card.rank())
+            .collect::<Vec<_>>();
+    
+        return Some(HandRanking::Pair(
+            Pair::new(pairs[0], kickers.try_into().unwrap())
+        ));
     }
 
-    return Some(HandRanking::TwoPair(pairs[pairs.len() - 1])); // Last pair has highest rank
+    let kicker = hand.cards().iter()
+        .find(|card| card.rank() != pairs[0] && card.rank() != pairs[1])
+        .map(|card| card.rank())
+        .unwrap();
+
+    return Some(HandRanking::TwoPair(
+        TwoPair::new(pairs[0..2].try_into().unwrap(), kicker)
+    ));
 }
 
 /// Return all pairs in ascending order by rank
@@ -191,15 +192,17 @@ fn find_all_pairs(hand: &Hand) -> Vec<Rank> {
 }
 
 fn highest_card(hand: &Hand) -> HandRanking {
-    return HandRanking::HighCard(hand.cards().last().unwrap().rank());
+    return HandRanking::HighCard(
+        hand.cards().map(|card| card.rank())[0..5].try_into().unwrap()
+    );
 }
 
 #[cfg(test)]
 mod tests {
     use crate::naive_evaluator::{
         card::{Card, Rank, Suit}, 
-        hand::Hand, 
-        hand_ranking::HandRanking
+        hand::Hand,
+        hand_ranking::{HandRanking, FourOf, Flush, ThreeOf, TwoPair, Pair, FullHouse}
     };
 
     use super::evaluate_five_cards;
@@ -246,7 +249,7 @@ mod tests {
             Card::new(Rank::King, Suit::Spades)
         ]);
         let ranking = evaluate_five_cards(&hand);
-        assert_eq!(ranking, HandRanking::FourOf(Rank::Nine));
+        assert_eq!(ranking, HandRanking::FourOf(FourOf::new(Rank::Nine, Rank::Ace)));
     }
 
     #[test]
@@ -261,7 +264,9 @@ mod tests {
             Card::new(Rank::King, Suit::Spades)
         ]);
         let ranking = evaluate_five_cards(&hand);
-        assert_eq!(ranking, HandRanking::Flush(Rank::King));
+        assert_eq!(ranking, HandRanking::Flush(
+            Flush::new([Rank::King, Rank::Ten, Rank::Nine, Rank::Eight, Rank::Two])
+        ));
     }
 
     #[test]
@@ -291,7 +296,9 @@ mod tests {
             Card::new(Rank::King, Suit::Spades)
         ]);
         let ranking = evaluate_five_cards(&hand);
-        assert_eq!(ranking, HandRanking::ThreeOf(Rank::Two));
+        assert_eq!(ranking, HandRanking::ThreeOf(
+            ThreeOf::new(Rank::Two, [Rank::King, Rank::Eight])
+        ));
     }
 
     #[test]
@@ -306,7 +313,9 @@ mod tests {
             Card::new(Rank::King, Suit::Spades)
         ]);
         let ranking = evaluate_five_cards(&hand);
-        assert_eq!(ranking, HandRanking::TwoPair(Rank::Eight));
+        assert_eq!(ranking, HandRanking::TwoPair(
+            TwoPair::new([Rank::Eight, Rank::Three], Rank::King)
+        ));
     }
 
     #[test]
@@ -321,7 +330,9 @@ mod tests {
             Card::new(Rank::King, Suit::Spades)
         ]);
         let ranking = evaluate_five_cards(&hand);
-        assert_eq!(ranking, HandRanking::Pair(Rank::Three));
+        assert_eq!(ranking, HandRanking::Pair(
+            Pair::new(Rank::Three, [Rank::Ace, Rank::King, Rank::Eight])
+        ));
     }
 
     #[test]
@@ -336,7 +347,9 @@ mod tests {
             Card::new(Rank::Five, Suit::Spades)
         ]);
         let ranking = evaluate_five_cards(&hand);
-        assert_eq!(ranking, HandRanking::HighCard(Rank::Queen));
+        assert_eq!(ranking, HandRanking::HighCard(
+            [Rank::Queen, Rank::Ten, Rank::Eight, Rank::Seven, Rank::Five]
+        ));
     }
 
     #[test]
@@ -351,7 +364,9 @@ mod tests {
             Card::new(Rank::Nine, Suit::Diamonds)
         ]);
         let ranking = evaluate_five_cards(&hand);
-        assert_eq!(ranking, HandRanking::FullHouse(Rank::Nine));
+        assert_eq!(ranking, HandRanking::FullHouse(
+            FullHouse::new(Rank::Six, Rank::Nine)
+        ));
 
         let hand = Hand::new([
             Card::new(Rank::Ten, Suit::Hearts),
@@ -363,7 +378,9 @@ mod tests {
             Card::new(Rank::Nine, Suit::Diamonds)
         ]);
         let ranking = evaluate_five_cards(&hand);
-        assert_eq!(ranking, HandRanking::TwoPair(Rank::Nine));
+        assert_eq!(ranking, HandRanking::TwoPair(
+            TwoPair::new([Rank::Nine, Rank::Six], Rank::Ace)
+        ));
 
         let hand = Hand::new([
             Card::new(Rank::King, Suit::Spades),
@@ -375,7 +392,9 @@ mod tests {
             Card::new(Rank::Four, Suit::Clubs)
         ]);
         let ranking = evaluate_five_cards(&hand);
-        assert_eq!(ranking, HandRanking::Pair(Rank::Nine));
+        assert_eq!(ranking, HandRanking::Pair(
+            Pair::new(Rank::Nine, [Rank::King, Rank::Queen, Rank::Six])
+        ));
         
         let hand = Hand::new([
             Card::new(Rank::Jack, Suit::Hearts),
@@ -387,6 +406,8 @@ mod tests {
             Card::new(Rank::Four, Suit::Clubs)
         ]);
         let ranking = evaluate_five_cards(&hand);
-        assert_eq!(ranking, HandRanking::Pair(Rank::Nine));
+        assert_eq!(ranking, HandRanking::Pair(
+            Pair::new(Rank::Nine, [Rank::Queen, Rank::Jack, Rank::Six])
+        ));
     }
 }
