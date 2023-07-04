@@ -2,6 +2,7 @@ use super::card::Card;
 
 pub const HAND_SIZE: usize = 7;
 
+#[derive(Debug)]
 pub struct Hand {
     // Cards in descending rank order
     cards: [Card; HAND_SIZE]
