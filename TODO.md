@@ -1,1 +1,1 @@
-[] Fix straight evaluation with Ace as lowest
+[x] Fix straight evaluation with Ace as lowest

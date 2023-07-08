@@ -134,6 +134,21 @@ fn has_straight(hand: &Hand) -> Option<HandRanking> {
         .windows(CARDS_IN_COMBO)
         .find(|five| five.windows(2).all(|pair| pair[0].rank().lower().is_some_and(|lower| lower == pair[1].rank())))
         .map(|straight| HandRanking::Straight(straight[0].rank()))
+        .or_else(|| {
+            let cards = hand.cards();
+            let c1 = cards.first().unwrap().rank();
+            let c2 = cards[cards.len() - 1].rank();
+            let c3 = cards[cards.len() - 2].rank();
+            let c4 = cards[cards.len() - 3].rank();
+            let c5 = cards[cards.len() - 4].rank();
+            
+            // Check for Ace low straight
+            if c2 == Rank::Two && c1 == Rank::Ace && c5 == Rank::Five && c4 == Rank::Four && c3 == Rank::Three {
+                return Some(HandRanking::Straight(Rank::Five));
+            }
+
+            return None;
+        });
 }
 
 fn has_three_of(hand: &Hand) -> Option<HandRanking> {
@@ -182,7 +197,7 @@ fn has_pairs(hand: &Hand) -> Option<HandRanking> {
     ));
 }
 
-/// Return all pairs in ascending order by rank
+/// Return all pairs in descending order by rank
 fn find_all_pairs(hand: &Hand) -> Vec<Rank> {
     return hand.cards()
         .windows(2)
@@ -282,6 +297,30 @@ mod tests {
         ]);
         let ranking = evaluate_five_cards(&hand);
         assert_eq!(ranking, HandRanking::Straight(Rank::Six));
+        
+        let hand = Hand::new([
+            Card::new(Rank::Two, Suit::Diamonds),
+            Card::new(Rank::Three, Suit::Clubs),
+            Card::new(Rank::Four, Suit::Spades),
+            Card::new(Rank::Five, Suit::Diamonds),
+            Card::new(Rank::Nine, Suit::Hearts),
+            Card::new(Rank::Ace, Suit::Clubs),
+            Card::new(Rank::King, Suit::Spades)
+        ]);
+        let ranking = evaluate_five_cards(&hand);
+        assert_eq!(ranking, HandRanking::Straight(Rank::Five));
+        
+        let hand = Hand::new([
+            Card::new(Rank::Two, Suit::Diamonds),
+            Card::new(Rank::Three, Suit::Clubs),
+            Card::new(Rank::Ten, Suit::Spades),
+            Card::new(Rank::Jack, Suit::Diamonds),
+            Card::new(Rank::Queen, Suit::Hearts),
+            Card::new(Rank::Ace, Suit::Clubs),
+            Card::new(Rank::King, Suit::Spades)
+        ]);
+        let ranking = evaluate_five_cards(&hand);
+        assert_eq!(ranking, HandRanking::Straight(Rank::Ace));
     }
 
     #[test]
