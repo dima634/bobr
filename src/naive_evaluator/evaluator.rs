@@ -118,6 +118,7 @@ fn has_flush_of(suit: Suit, hand: &Hand) -> Option<HandRanking> {
     let maybe_flush: Vec<_> = hand.cards().iter()
         .filter(|card| card.suit() == suit)
         .map(|card| card.rank())
+        .take(CARDS_IN_COMBO)
         .collect();
 
     if maybe_flush.len() >= CARDS_IN_COMBO {
@@ -130,17 +131,23 @@ fn has_flush_of(suit: Suit, hand: &Hand) -> Option<HandRanking> {
 }
 
 fn has_straight(hand: &Hand) -> Option<HandRanking> {
-    return hand.cards()
+    let mut cards = hand.cards().map(|c| c.rank()).to_vec();
+    cards.dedup();
+
+    if cards.len() < CARDS_IN_COMBO {
+        return None;
+    }
+
+    return cards
         .windows(CARDS_IN_COMBO)
-        .find(|five| five.windows(2).all(|pair| pair[0].rank().lower().is_some_and(|lower| lower == pair[1].rank())))
-        .map(|straight| HandRanking::Straight(straight[0].rank()))
+        .find(|five| five.windows(2).all(|pair| pair[0].lower().is_some_and(|lower| lower == pair[1])))
+        .map(|straight| HandRanking::Straight(straight[0]))
         .or_else(|| {
-            let cards = hand.cards();
-            let c1 = cards.first().unwrap().rank();
-            let c2 = cards[cards.len() - 1].rank();
-            let c3 = cards[cards.len() - 2].rank();
-            let c4 = cards[cards.len() - 3].rank();
-            let c5 = cards[cards.len() - 4].rank();
+            let c1 = cards[0];
+            let c2 = cards[cards.len() - 1];
+            let c3 = cards[cards.len() - 2];
+            let c4 = cards[cards.len() - 3];
+            let c5 = cards[cards.len() - 4];
             
             // Check for Ace low straight
             if c2 == Rank::Two && c1 == Rank::Ace && c5 == Rank::Five && c4 == Rank::Four && c3 == Rank::Three {
@@ -448,5 +455,12 @@ mod tests {
         assert_eq!(ranking, HandRanking::Pair(
             Pair::new(Rank::Nine, [Rank::Queen, Rank::Jack, Rank::Six])
         ));
+    }
+
+    #[test]
+    fn test_straight_with_duplicated_card() {
+        let hand = Hand::try_from("7h6d5h4c4d3h2c").unwrap();
+        let ranking = evaluate_five_cards(&hand);
+        assert_eq!(ranking, HandRanking::Straight(Rank::Seven));
     }
 }

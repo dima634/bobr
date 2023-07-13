@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use super::card::Rank;
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
@@ -102,6 +104,31 @@ pub enum HandRanking {
     FourOf(FourOf),
     StraightFlush(Rank),
     RoyalFlush
+}
+
+impl From<&HandRanking> for String {
+    #[inline]
+    fn from(value: &HandRanking) -> Self {
+        return match value {
+            HandRanking::HighCard(high)         => format!("High card {}", high[0]),
+            HandRanking::Pair(pair)             => format!("Pair {}", pair.pair_rank),
+            HandRanking::TwoPair(two_pair)      => format!("Two pair {}{}", two_pair.pairs[0], two_pair.pairs[1]),
+            HandRanking::ThreeOf(trey)          => format!("Three of {}", trey.three_of),
+            HandRanking::Straight(high)         => format!("Straight {}", high),
+            HandRanking::Flush(flush)           => format!("Flush {}", flush.ranks[0]),
+            HandRanking::FullHouse(full_house)  => format!("Full house {}{}", full_house.three_of_rank, full_house.pair_of_rank),
+            HandRanking::FourOf(four)           => format!("Four {}", four.rank),
+            HandRanking::StraightFlush(high)    => format!("Straight flush {}", high),
+            HandRanking::RoyalFlush             => format!("Royal flush"),
+        };
+    }
+}
+
+impl Display for HandRanking {
+    #[inline]
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        return write!(f, "{}", String::from(self));
+    }
 }
 
 #[cfg(test)]

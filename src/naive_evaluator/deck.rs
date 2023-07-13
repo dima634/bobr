@@ -2,13 +2,13 @@ use rand::Rng;
 
 use super::card::{Card, Suit, Rank};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Deck {
     cards: Vec<Card>
 }
 
 impl Deck {
-    const SIZE: usize = 52;
+    pub const SIZE: usize = 52;
 
     pub fn new() -> Self {
         let mut cards = Vec::new();
@@ -42,6 +42,11 @@ impl Deck {
     #[inline]
     pub fn draw_card(&mut self) -> Option<Card> {
         return self.cards.pop();
+    }
+
+    #[inline]
+    pub fn put_card(&mut self, card: Card) {
+        self.cards.push(card);
     }
 
     pub fn shuffle(&mut self) -> &mut Self {
