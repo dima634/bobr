@@ -1,5 +1,5 @@
 use super::{
-    hand::Hand,
+    hand::{Hand, HAND_SIZE},
     hand_ranking::{HandRanking, FourOf, FullHouse, Flush, ThreeOf, TwoPair, Pair}, 
     card::{Rank, Suit}
 };
@@ -37,35 +37,51 @@ fn has_royal_flush(hand: &Hand) -> Option<HandRanking> {
 }
 
 fn has_straight_flush(hand: &Hand) -> Option<HandRanking> {
-    let mut high_card = hand.cards()[0];
-    let mut previous_card = high_card;
-    let mut straight_cards_count = 1;
+    for first_card_idx in 0..HAND_SIZE - CARDS_IN_COMBO + 1 {
+        let high_card = hand.cards()[first_card_idx];
+        let mut previous_card = high_card;
+        let mut straight_cards_count = 1;
 
-    for card in hand.cards().iter().skip(1) {
-        let expected_rank = 
-            if let Some(lower) = previous_card.rank().lower() {
-                lower
-            } else {
-                return None;
-            };
+        for next_card_idx in first_card_idx..hand.cards().len() {
+            let next_card = hand.cards()[next_card_idx];
 
-        let ok = 
-            card.suit() == high_card.suit() &&
-            card.rank() == expected_rank;
+            if previous_card.rank() == next_card.rank() {
+                continue;
+            }
 
-        if !ok {
-            high_card = *card;
-            previous_card = *card;
-            straight_cards_count = 1;
-            continue;
+            let expected_rank =
+                if let Some(lower) = previous_card.rank().lower() {
+                    lower
+                } else {
+                    return None;
+                };
+
+            if expected_rank != next_card.rank() {
+                break;
+            }
+
+            if next_card.suit() != high_card.suit() {
+                // Next card can have same rank with required suit
+                continue;
+            }
+            
+            if next_card.rank() == Rank::Two {
+                let ace_low = hand.cards().iter()
+                    .take_while(|c| c.rank() == Rank::Ace)
+                    .filter(|c| c.suit() == high_card.suit());
+
+                if ace_low.count() != 0 {
+                    straight_cards_count += 1;
+                }
+            }
+
+            previous_card = next_card;
+            straight_cards_count += 1;
         }
 
-        previous_card = *card;
-        straight_cards_count += 1;
-    }
-
-    if straight_cards_count >= CARDS_IN_COMBO {
-        return Some(HandRanking::StraightFlush(high_card.rank()));
+        if straight_cards_count >= CARDS_IN_COMBO {
+            return Some(HandRanking::StraightFlush(high_card.rank()));
+        }
     }
 
     return None;
@@ -458,9 +474,14 @@ mod tests {
     }
 
     #[test]
-    fn test_straight_with_duplicated_card() {
+    fn test_random_hands() {
         let hand = Hand::try_from("7h6d5h4c4d3h2c").unwrap();
-        let ranking = evaluate_five_cards(&hand);
-        assert_eq!(ranking, HandRanking::Straight(Rank::Seven));
+        assert_eq!(evaluate_five_cards(&hand), HandRanking::Straight(Rank::Seven));
+
+        let hand = Hand::try_from("AdKcJcTcQc9c2c").unwrap();
+        assert_eq!(evaluate_five_cards(&hand), HandRanking::StraightFlush(Rank::King));
+
+        let hand = Hand::try_from("2c3c4c5cAc9d2d").unwrap();
+        assert_eq!(evaluate_five_cards(&hand), HandRanking::StraightFlush(Rank::Five));
     }
 }
