@@ -7,8 +7,7 @@ use super::{
 pub const CARDS_IN_COMBO: usize = 5;
 
 pub fn evaluate_five_cards(hand: &Hand) -> HandRanking {
-    return has_royal_flush(hand)
-        .or_else(|| has_straight_flush(hand)) 
+    return has_straight_flush(hand)
         .or_else(|| has_four_of(hand))
         .or_else(|| has_full_house(hand))
         .or_else(|| has_flush(hand))
@@ -16,24 +15,6 @@ pub fn evaluate_five_cards(hand: &Hand) -> HandRanking {
         .or_else(|| has_three_of(hand))
         .or_else(|| has_pairs(hand))
         .unwrap_or(highest_card(hand));
-}
-
-fn has_royal_flush(hand: &Hand) -> Option<HandRanking> {
-    let first_card = &hand.cards()[0];
-
-    if first_card.rank() != Rank::Ace {
-        return None;
-    }
-
-    let ace_suit = first_card.suit();
-
-    for card in hand.cards().iter().skip(1).take(4) {
-        if ace_suit != card.suit() {
-            return None;
-        }
-    }
-
-    return Some(HandRanking::RoyalFlush);
 }
 
 fn has_straight_flush(hand: &Hand) -> Option<HandRanking> {
@@ -257,7 +238,7 @@ mod tests {
             Card::new(Rank::Two, Suit::Spades)
         ]);
         let ranking = evaluate_five_cards(&hand);
-        assert_eq!(ranking, HandRanking::RoyalFlush);
+        assert_eq!(ranking, HandRanking::StraightFlush(Rank::Ace));
     }
 
     #[test]
@@ -483,5 +464,8 @@ mod tests {
 
         let hand = Hand::try_from("2c3c4c5cAc9d2d").unwrap();
         assert_eq!(evaluate_five_cards(&hand), HandRanking::StraightFlush(Rank::Five));
+        
+        let hand = Hand::try_from("AsQs5h7s9s6s5d").unwrap();
+        assert_eq!(evaluate_five_cards(&hand), HandRanking::Flush(Flush::new([Rank::Ace, Rank::Queen, Rank::Nine, Rank::Seven, Rank::Six])));
     }
 }

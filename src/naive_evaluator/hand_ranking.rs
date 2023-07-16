@@ -102,8 +102,7 @@ pub enum HandRanking {
     Flush(Flush),
     FullHouse(FullHouse),
     FourOf(FourOf),
-    StraightFlush(Rank),
-    RoyalFlush
+    StraightFlush(Rank)
 }
 
 impl From<&HandRanking> for String {
@@ -118,8 +117,7 @@ impl From<&HandRanking> for String {
             HandRanking::Flush(flush)           => format!("Flush {}", flush.ranks[0]),
             HandRanking::FullHouse(full_house)  => format!("Full house {}{}", full_house.three_of_rank, full_house.pair_of_rank),
             HandRanking::FourOf(four)           => format!("Four {}", four.rank),
-            HandRanking::StraightFlush(high)    => format!("Straight flush {}", high),
-            HandRanking::RoyalFlush             => format!("Royal flush"),
+            HandRanking::StraightFlush(high)    => if *high == Rank::Ace { String::from("Royal flush") } else { format!("Straight flush {}", high) },
         };
     }
 }
