@@ -109,14 +109,14 @@ impl From<&HandRanking> for String {
     #[inline]
     fn from(value: &HandRanking) -> Self {
         return match value {
-            HandRanking::HighCard(high)         => format!("High card {}", high[0]),
+            HandRanking::HighCard(high)         => format!("High card {}", kickers_to_string(high)),
             HandRanking::Pair(pair)             => format!("Pair {}. Kickers {}", pair.pair_rank, kickers_to_string(&pair.kickers)),
             HandRanking::TwoPair(two_pair)      => format!("Two pair {}{}. Kicker {}", two_pair.pairs[0], two_pair.pairs[1], two_pair.kicker),
             HandRanking::ThreeOf(trey)          => format!("Three of {}. Kickers {}", trey.three_of, kickers_to_string(&trey.kickers)),
             HandRanking::Straight(high)         => format!("Straight {}", high),
-            HandRanking::Flush(flush)           => format!("Flush {}", flush.ranks[0]),
+            HandRanking::Flush(flush)           => format!("Flush {}", kickers_to_string(&flush.ranks)),
             HandRanking::FullHouse(full_house)  => format!("Full house {}{}", full_house.three_of_rank, full_house.pair_of_rank),
-            HandRanking::FourOf(four)           => format!("Four {}. Kicker{}", four.rank, four.kicker),
+            HandRanking::FourOf(four)           => format!("Four {}. Kicker {}", four.rank, four.kicker),
             HandRanking::StraightFlush(high)    => if *high == Rank::Ace { String::from("Royal flush") } else { format!("Straight flush {}", high) },
         };
     }

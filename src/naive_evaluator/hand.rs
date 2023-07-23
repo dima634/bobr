@@ -4,7 +4,7 @@ use super::card::Card;
 
 pub const HAND_SIZE: usize = 7;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Hand {
     // Cards in descending rank order
     cards: [Card; HAND_SIZE]
@@ -13,7 +13,7 @@ pub struct Hand {
 impl Hand {
     #[inline]
     pub fn new(mut cards: [Card; HAND_SIZE]) -> Self {
-        cards.sort_unstable_by(|c1, c2| c1.rank().cmp(&c2.rank()).reverse());
+        cards.sort_unstable_by(|c1, c2| c2.cmp(c1));
         return Self { cards };
     }
 

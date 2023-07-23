@@ -18,7 +18,7 @@ pub fn evaluate_five_cards(hand: &Hand) -> HandRanking {
 }
 
 fn has_straight_flush(hand: &Hand) -> Option<HandRanking> {
-    for first_card_idx in 0..HAND_SIZE - CARDS_IN_COMBO + 1 {
+    for first_card_idx in 0..HAND_SIZE - CARDS_IN_COMBO + 2 { // +2 -> straight flush with low Ace
         let high_card = hand.cards()[first_card_idx];
         let mut previous_card = high_card;
         let mut straight_cards_count = 1;
@@ -254,6 +254,14 @@ mod tests {
         ]);
         let ranking = evaluate_five_cards(&hand);
         assert_eq!(ranking, HandRanking::StraightFlush(Rank::Ten));
+
+        let hand = Hand::try_from("AsAcQd5s4s3s2s").unwrap();
+        let ranking = evaluate_five_cards(&hand);
+        assert_eq!(ranking, HandRanking::StraightFlush(Rank::Five));
+
+        let hand = Hand::try_from("AcQd5c4c3c2s2c").unwrap();
+        let ranking = evaluate_five_cards(&hand);
+        assert_eq!(ranking, HandRanking::StraightFlush(Rank::Five));
     }
 
     #[test]
